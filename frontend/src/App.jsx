@@ -39,7 +39,13 @@ function App() {
     loadSettings();
 
     // 連接 WebSocket
-    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    // 在生產環境（Docker）中使用當前頁面的 origin
+    // 在開發環境中使用環境變數或默認值
+    const serverUrl = import.meta.env.MODE === 'production'
+      ? window.location.origin
+      : (import.meta.env.VITE_SERVER_URL || 'http://localhost:3001');
+
+    console.log('🔌 連接到 WebSocket 伺服器:', serverUrl);
     socketClient.connect(serverUrl);
 
     // 監聽候診資料更新
