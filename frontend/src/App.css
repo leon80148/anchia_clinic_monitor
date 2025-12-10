@@ -1,0 +1,128 @@
+/**
+ * App 元件樣式
+ */
+
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-header h2 {
+  color: white !important;
+}
+
+.app-content {
+  padding: 24px;
+  min-height: calc(100vh - 128px);
+}
+
+.content-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.app-footer {
+  text-align: center;
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+/* 統計卡片樣式 */
+.statistics-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.statistics-card:hover {
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.2);
+  transform: translateY(-2px);
+}
+
+/* 表格行樣式 */
+.patient-table .ant-table-row.row-current {
+  background-color: #e6f7ff !important;
+  font-weight: 500;
+}
+
+.patient-table .ant-table-row.row-current:hover {
+  background-color: #bae7ff !important;
+}
+
+.patient-table .ant-table-row.row-waiting {
+  background-color: #fffbe6 !important;
+  color: #faad14;
+}
+
+.patient-table .ant-table-row.row-waiting:hover {
+  background-color: #fff1b8 !important;
+}
+
+.patient-table .ant-table-row.row-completed {
+  background-color: #f6ffed !important;
+  color: #52c41a;
+}
+
+.patient-table .ant-table-row.row-completed:hover {
+  background-color: #d9f7be !important;
+}
+
+.patient-table .ant-table-row.row-cancelled {
+  background-color: #fafafa !important;
+  color: #8c8c8c;
+  text-decoration: line-through;
+}
+
+.patient-table .ant-table-row.row-cancelled:hover {
+  background-color: #f0f0f0 !important;
+}
+
+/* 序號樣式 */
+.queue-number {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 16px;
+  }
+
+  .app-header h2 {
+    font-size: 18px !important;
+  }
+
+  .app-content {
+    padding: 16px;
+  }
+
+  .content-wrapper {
+    padding: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .app-header h2 {
+    font-size: 16px !important;
+  }
+
+  .queue-number {
+    font-size: 16px;
+  }
+}

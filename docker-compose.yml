@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  clinic-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anchia-clinic-monitor
+    image: anchia-clinic-monitor:latest
+
+    # 環境變數
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DBF_FILE_PATH=/data/CO05T.DBF
+      - WATCH_INTERVAL=2000
+      - TZ=Asia/Taipei
+
+    # Port 映射
+    ports:
+      - "3001:3001"
+
+    # Volume 掛載 - DBF 檔案目錄
+    # 請修改左邊的路徑為您的實際 DBF 檔案所在目錄
+    volumes:
+      - ./data:/data:ro  # ro = read-only（唯讀）
+      # 範例：- C:\clinic_data:/data:ro
+      # 範例：- /home/user/clinic_data:/data:ro
+
+    # 重啟策略
+    restart: unless-stopped
+
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # 健康檢查（已在 Dockerfile 中定義）
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # 網路
+    networks:
+      - clinic-network
+
+    # 日誌設定
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# 網路定義
+networks:
+  clinic-network:
+    driver: bridge
