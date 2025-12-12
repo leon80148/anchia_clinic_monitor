@@ -26,7 +26,7 @@ services:
     # Volume 掛載 - DBF 檔案目錄
     # 請修改左邊的路徑為您的實際 DBF 檔案所在目錄
     volumes:
-      - ./data:/data:ro  # ro = read-only（唯讀）
+      - D:\Data\VISW:/data:ro  # ro = read-only（唯讀）
       # 範例：- C:\clinic_data:/data:ro
       # 範例：- /home/user/clinic_data:/data:ro
 

@@ -8,9 +8,11 @@ import { Table, Tag, Badge } from 'antd';
 
 const PatientTable = React.memo(({ patients, settings = {} }) => {
   // 狀態配置
+  // I: 看診中, A: 候診中, 0: 保留, E: 預約, H: 取消, F: 完診
   const statusConfig = {
-    '1': { text: '看診中', badge: 'processing', color: 'processing' },
-    '0': { text: '候診中', badge: 'warning', color: 'warning' },
+    'I': { text: '看診中', badge: 'processing', color: 'processing' },
+    'A': { text: '候診中', badge: 'warning', color: 'warning' },
+    '0': { text: '保留', badge: 'default', color: 'default' },
     'E': { text: '預約未到', badge: 'default', color: 'default' },
     'H': { text: '已取消', badge: 'default', color: 'default' },
     'F': { text: '已完診', badge: 'success', color: 'success' }
@@ -105,7 +107,7 @@ const PatientTable = React.memo(({ patients, settings = {} }) => {
       key: 'status',
       width: 120,
       render: (status) => {
-        const config = statusConfig[status] || statusConfig['0'];
+        const config = statusConfig[status] || statusConfig['A'];
         return <Badge status={config.badge} text={config.text} />;
       }
     },
@@ -140,8 +142,10 @@ const PatientTable = React.memo(({ patients, settings = {} }) => {
         bordered
         rowClassName={(record) => {
           // 根據狀態添加不同的行樣式
-          if (record.status === '1') return 'row-current'; // 看診中
-          if (record.status === '0') return 'row-waiting'; // 候診中
+          // I: 看診中, A: 候診中, 0: 保留, E: 預約, H: 取消, F: 完診
+          if (record.status === 'I') return 'row-current'; // 看診中
+          if (record.status === 'A') return 'row-waiting'; // 候診中
+          if (record.status === '0') return 'row-reserved'; // 保留
           if (record.status === 'F') return 'row-completed'; // 完診
           if (record.status === 'H') return 'row-cancelled'; // 取消
           return '';

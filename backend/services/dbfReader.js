@@ -5,7 +5,11 @@
 
 const fs = require('fs');
 const iconv = require('iconv-lite');
-const { calculateAge } = require('../utils/dateConverter');
+const { calculateAge, getTodayROC } = require('../utils/dateConverter');
+
+// 有效的看診狀態代碼
+// I=看診中, A=候診中, 0=保留, E=預約, H=取消, F=完診
+const VALID_STATUS_CODES = ['I', 'A', '0', 'E', 'H', 'F'];
 
 class DBFReader {
   constructor(filePath) {
@@ -69,15 +73,24 @@ class DBFReader {
         TARTIME: { offset: 98, length: 8 },    // 看診號碼
         TBEGTIME: { offset: 106, length: 6 },  // 開始看診時間
         TENDTIME: { offset: 112, length: 6 },  // 完診時間
+        TDATE: { offset: 170, length: 7 },     // 掛號看診日期
+        TROOM: { offset: 177, length: 4 },     // 掛號看診時間
         TSEC: { offset: 214, length: 1 },      // 時段
         TNAME: { offset: 215, length: 10 },    // 姓名
         TIDNO: { offset: 225, length: 10 },    // 身分證字號
         TBIRTHDT: { offset: 235, length: 7 }   // 生日
       };
 
+      // 取得今日民國年日期
+      const todayROC = getTodayROC();
+      console.log(`今日日期（民國年）: ${todayROC}`);
+
       const records = [];
 
       // 讀取每一筆記錄
+      let skippedNotToday = 0;
+      let skippedInvalidStatus = 0;
+
       for (let i = 0; i < recordCount; i++) {
         const recordStart = headerSize + (i * recordSize);
         const recordBuffer = buffer.slice(recordStart, recordStart + recordSize);
@@ -88,14 +101,23 @@ class DBFReader {
         }
 
         try {
-          const patient = this.parseRecordFromBuffer(recordBuffer, fieldOffsets);
+          const patient = this.parseRecordFromBuffer(recordBuffer, fieldOffsets, todayROC);
           if (patient) {
-            records.push(patient);
+            if (patient._skipReason === 'not_today') {
+              skippedNotToday++;
+            } else if (patient._skipReason === 'invalid_status') {
+              skippedInvalidStatus++;
+            } else {
+              records.push(patient);
+            }
           }
         } catch (error) {
           console.warn(`解析記錄 ${i + 1} 失敗:`, error.message);
         }
       }
+
+      console.log(`跳過非今日資料: ${skippedNotToday} 筆`);
+      console.log(`跳過無效狀態資料: ${skippedInvalidStatus} 筆`);
 
       console.log(`DBF 讀取完成，共 ${records.length} 筆記錄`);
       return records;
@@ -110,9 +132,10 @@ class DBFReader {
    * 從 Buffer 解析單筆記錄
    * @param {Buffer} recordBuffer - 記錄的 Buffer
    * @param {Object} fieldOffsets - 欄位偏移量定義
+   * @param {string} todayROC - 今日民國年日期（YYYMMDD）
    * @returns {Object|null} 解析後的病患資料
    */
-  parseRecordFromBuffer(recordBuffer, fieldOffsets) {
+  parseRecordFromBuffer(recordBuffer, fieldOffsets, todayROC) {
     // 讀取並解碼欄位
     const getField = (name) => {
       const field = fieldOffsets[name];
@@ -126,6 +149,22 @@ class DBFReader {
     // 跳過空記錄
     if (!name || name.trim() === '') {
       return null;
+    }
+
+    // 取得掛號看診日期
+    const tdate = getField('TDATE');
+
+    // 篩選：只選擇 TDATE 為今日的資料
+    if (tdate !== todayROC) {
+      return { _skipReason: 'not_today' };
+    }
+
+    // 取得狀態碼
+    const rawStatus = getField('TSTS');
+
+    // 篩選：只選擇有效狀態代碼的資料（1, 0, 空白, E, H, F）
+    if (!VALID_STATUS_CODES.includes(rawStatus)) {
+      return { _skipReason: 'invalid_status' };
     }
 
     return {
@@ -151,7 +190,7 @@ class DBFReader {
       identity: this.parseIdentity(getField('LM')),
 
       // 狀態
-      status: this.parseStatus(getField('TSTS')),
+      status: this.parseStatus(rawStatus),
 
       // 時段
       session: this.parseSession(getField('TSEC')),
@@ -162,8 +201,14 @@ class DBFReader {
       // 完診時間
       completeTime: getField('TENDTIME'),
 
+      // 掛號看診日期
+      visitDate: tdate,
+
+      // 掛號看診時間
+      visitTime: getField('TROOM'),
+
       // 原始狀態碼
-      _rawStatus: getField('TSTS')
+      _rawStatus: rawStatus
     };
   }
 
@@ -174,18 +219,15 @@ class DBFReader {
    * @returns {string} 標準化的狀態碼
    */
   parseStatus(statusCode) {
-    if (!statusCode) return '0';
-
-    const code = statusCode.trim();
-
     // 狀態碼映射
-    // 1: 看診中
-    // 0: 候診中（已報到等待看診）
-    // E: 預約未到
-    // H: 取消/退掛
-    // F: 完診
+    // I: 看診中（正在看診）
+    // A: 候診中（已報到等待看診）
+    // 0: 保留
+    // E: 預約（尚未報到）
+    // H: 取消（取消掛號）
+    // F: 完診（看診完成）
 
-    return code || '0';
+    return statusCode || '';
   }
 
   /**

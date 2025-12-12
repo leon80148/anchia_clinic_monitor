@@ -219,44 +219,56 @@ ORDER BY fsq
 
 **用途**：記錄當日看診即時狀態，用於門診進度追蹤與叫號系統
 
-**複合鍵**：`KCSTMR` + `TBKDT` + `TBKTIME`（實際使用 record_hash 唯一約束）
+**複合鍵**：`KCSTMR` + `TDATE` + `TROOM`（實際使用 record_hash 唯一約束）
 
 | 欄位 | 類型 | 說明 | 必填 | 範例 |
 |------|------|------|------|------|
 | KCSTMR | String(7) | 病歷號 | ✓ | `0000001` |
-| TBKDT | String(7) | 掛號日期（民國年 YYYMMDD） | ✓ | `1141210` |
-| TBKTIME | String(6) | 掛號時間（HHMMSS） | ✓ | `090000` |
+| TBKDT | String(7) | 掛號資料最新儲存日期（民國年 YYYMMDD） | | `1141210` |
+| TBKDATE | String(7) | 掛號建立日期（民國年 YYYMMDD） | | `1141210` |
+| TBKTIME | String(5) | 掛號資料最新儲存時間（HHMMS） | | `09000` |
 | TID | String(1) | 醫師別 | | `1` |
 | TIDS | String(2) | 診別 | | `01` |
 | TSTS | String(1) | **看診狀態**（重要欄位） | ✓ | `1` |
-| TSEC | String(2) | 看診時段 | | `A` |
-| TARTIME | String(8) | 號碼（看診順序） | | `00015` |
-| TNOTE | String(10) | 備註 | | - |
 | LM | String(1) | **身分別**（重要欄位） | | `A` |
-| TENDTIME | String(8) | 完診時間 | | `093530` |
+| TARTIME | String(8) | 號碼（看診順序） | | `00015` |
+| TBEGTIME | String(6) | 開始看診時間（HHMMSS） | | `093000` |
+| TENDTIME | String(6) | 完診時間（HHMMSS） | | `093530` |
+| TDATE | String(7) | **掛號看診日期**（民國年 YYYMMDD，重要欄位） | ✓ | `1141212` |
+| TROOM | String(4) | **掛號看診時間**（HHMM） | | `0900` |
+| TSEC | String(1) | 看診時段 | | `S` |
 | TNAME | String(10) | 病患姓名 | ✓ | `王小明` |
+| TIDNO | String(10) | 身分證字號 | | `A123456789` |
 | TBIRTHDT | String(7) | 病患生日（民國年 YYYMMDD） | | `0761015` |
+| TNOTE | String(20) | 備註 | | - |
 
 **重要欄位說明**：
+- `TDATE`: 掛號看診日期（用於篩選今日掛號資料）
+- `TROOM`: 掛號看診時間（HHMM 格式）
+- `TBKDT`: 掛號資料最新儲存日期（非看診日期）
+- `TBKTIME`: 掛號資料最新儲存時間（非看診時間）
 - `TSTS`: 看診狀態代碼
-  - `1` = 看診中（正在看診）
-  - `0` = 候診中（已報到等待看診）
+  - `I` = 看診中（正在看診）
+  - `A` = 候診中（已報到等待看診）
+  - `0` = 保留
   - `E` = 預約（尚未報到）
   - `H` = 取消（取消掛號）
   - `F` = 完診（看診完成）
+  - 其他 = 資料錯誤，不應顯示
 - `LM`: 身分別代碼
   - `A` = 健保身分
   - `9` = 其他身分
   - 空白 = 自費
 - `TARTIME`: 當日看診順序號碼（叫號用）
-- `TSEC`: 看診時段（早診/午診/晚診等）
+- `TSEC`: 看診時段（S=早診/T=午診/U=晚診）
 
 **關聯**：
 - 關聯至 CO01M (`KCSTMR`)
 
 **備註**：
-- 此表為當日即時狀態表，通常只保留當日資料
+- 此表為當日即時狀態表，應以 `TDATE` 篩選當日資料
 - 用於門診叫號系統、候診人數統計等即時功能
+- 只顯示有效狀態代碼（I, A, 0, E, H, F）的資料
 
 ---
 
@@ -424,18 +436,23 @@ CREATE TABLE IF NOT EXISTS co05b (
 CREATE TABLE IF NOT EXISTS co05t (
     id SERIAL PRIMARY KEY,                -- 自動遞增主鍵
     kcstmr VARCHAR(7),                    -- 病歷號
-    tbkdt VARCHAR(7),                     -- 掛號日期
-    tbktime VARCHAR(6),                   -- 掛號時間
+    tbkdt VARCHAR(7),                     -- 掛號資料最新儲存日期
+    tbkdate VARCHAR(7),                   -- 掛號建立日期
+    tbktime VARCHAR(5),                   -- 掛號資料最新儲存時間
     tid VARCHAR(1),                       -- 醫師別
     tids VARCHAR(2),                      -- 診別
-    tsts VARCHAR(1),                      -- 看診狀態（E:預約, H:取消, F:完診, 0:保留, 1:看診中）
-    tsec VARCHAR(2),                      -- 看診時段
-    tartime VARCHAR(8),                   -- 號碼（看診順序）
-    tnote VARCHAR(10),                    -- 備註
+    tsts VARCHAR(1),                      -- 看診狀態（I:看診中, A:候診中, 0:保留, E:預約, H:取消, F:完診）
     lm VARCHAR(1),                        -- 身分別（A:健保, 9:其他, 空白:自費）
-    tendtime VARCHAR(8),                  -- 完診時間
+    tartime VARCHAR(8),                   -- 號碼（看診順序）
+    tbegtime VARCHAR(6),                  -- 開始看診時間
+    tendtime VARCHAR(6),                  -- 完診時間
+    tdate VARCHAR(7),                     -- 掛號看診日期（用於篩選今日資料）
+    troom VARCHAR(4),                     -- 掛號看診時間
+    tsec VARCHAR(1),                      -- 看診時段（S:早診, T:午診, U:晚診）
     tname VARCHAR(10),                    -- 病患姓名
+    tidno VARCHAR(10),                    -- 身分證字號
     tbirthdt VARCHAR(7),                  -- 病患生日
+    tnote VARCHAR(20),                    -- 備註
     record_hash VARCHAR(32) UNIQUE,       -- 記錄 Hash（唯一約束，避免完全重複）
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -443,9 +460,10 @@ CREATE TABLE IF NOT EXISTS co05t (
 ```
 
 **重要說明**：
-- `tsts` 看診狀態用於追蹤當日門診進度
+- `tdate` 掛號看診日期，用於篩選今日門診資料
+- `tsts` 看診狀態用於追蹤當日門診進度（有效值：I, A, 0, E, H, F）
 - `lm` 身分別與 CO03L.LPID 類似，但命名不同
-- 此表通常只保留當日資料，適合用於即時監控
+- 此表應以 `tdate` 篩選當日資料，適合用於即時監控
 
 #### sync_log - 同步日誌
 

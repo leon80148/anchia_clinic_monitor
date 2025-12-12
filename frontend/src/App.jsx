@@ -95,18 +95,30 @@ function App() {
   }, [patients, selectedSession]);
 
   // 使用 useMemo 優化統計數字計算
+  // 狀態碼：I=看診中, A=候診中, 0=保留, E=預約, H=取消, F=完診
   const filteredStatistics = useMemo(() => {
     return {
       notArrived: sessionFilteredPatients.filter(p => p.status === 'E').length,
       total: sessionFilteredPatients.filter(p => p.status !== 'H').length,
       completed: sessionFilteredPatients.filter(p => p.status === 'F').length,
       waiting: sessionFilteredPatients.filter(p =>
-        p.status !== 'E' && p.status !== 'F' && p.status !== 'H'
+        // 候診中（A）、看診中（I）、保留（0）都算在待診人數中
+        p.status === 'A' || p.status === 'I' || p.status === '0'
       ).length
     };
   }, [sessionFilteredPatients]);
 
-  // 使用 useMemo 優化病患列表篩選
+  // 狀態排序優先級：看診中 > 保留 > 候診中 > 預約未到 > 已取消 > 已完診
+  const statusPriority = {
+    'I': 1,  // 看診中 - 最上面
+    '0': 2,  // 保留
+    'A': 3,  // 候診中
+    'E': 4,  // 預約未到
+    'H': 5,  // 已取消
+    'F': 6   // 已完診 - 最下面
+  };
+
+  // 使用 useMemo 優化病患列表篩選和排序
   const filteredPatients = useMemo(() => {
     let result = sessionFilteredPatients;
 
@@ -119,6 +131,13 @@ function App() {
     if (!settings.showCancelled) {
       result = result.filter(p => p.status !== 'H');
     }
+
+    // 按狀態優先級排序
+    result = [...result].sort((a, b) => {
+      const priorityA = statusPriority[a.status] || 99;
+      const priorityB = statusPriority[b.status] || 99;
+      return priorityA - priorityB;
+    });
 
     return result;
   }, [sessionFilteredPatients, settings.showScheduled, settings.showCancelled]);
