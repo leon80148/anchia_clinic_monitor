@@ -8,8 +8,8 @@ const iconv = require('iconv-lite');
 const { calculateAge, getTodayROC } = require('../utils/dateConverter');
 
 // 有效的看診狀態代碼
-// I=看診中, A=候診中, 0=保留, E=預約, H=取消, F=完診
-const VALID_STATUS_CODES = ['I', 'A', '0', 'E', 'H', 'F'];
+// 1=看診中, A=候診中, 0=保留, E=預約, H=取消, F=完診
+const VALID_STATUS_CODES = ['1', 'A', '0', 'E', 'H', 'F'];
 
 class DBFReader {
   constructor(filePath) {
@@ -162,7 +162,7 @@ class DBFReader {
     // 取得狀態碼
     const rawStatus = getField('TSTS');
 
-    // 篩選：只選擇有效狀態代碼的資料（1, 0, 空白, E, H, F）
+    // 篩選：只選擇有效狀態代碼的資料（1=看診中, A=候診中, 0=保留, E=預約, H=取消, F=完診）
     if (!VALID_STATUS_CODES.includes(rawStatus)) {
       return { _skipReason: 'invalid_status' };
     }
@@ -220,13 +220,17 @@ class DBFReader {
    */
   parseStatus(statusCode) {
     // 狀態碼映射
-    // I: 看診中（正在看診）
+    // 1 → I: 看診中（正在看診）
     // A: 候診中（已報到等待看診）
     // 0: 保留
     // E: 預約（尚未報到）
     // H: 取消（取消掛號）
     // F: 完診（看診完成）
 
+    // 將 DBF 中的 '1' 轉換為前端使用的 'I'
+    if (statusCode === '1') {
+      return 'I';
+    }
     return statusCode || '';
   }
 
