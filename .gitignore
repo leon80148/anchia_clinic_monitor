@@ -52,3 +52,7 @@ temp/
 
 # OS
 Thumbs.db
+
+# Added by automated healthcheck
+coverage/
+.env.*
